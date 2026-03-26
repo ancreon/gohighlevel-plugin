@@ -1,0 +1,15 @@
+# Never commit credentials
+.env
+credentials.env
+*.env
+
+# Client config may contain location IDs
+# Uncomment if you want to keep it private:
+# clients.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Plugin build artifacts
+*.plugin
