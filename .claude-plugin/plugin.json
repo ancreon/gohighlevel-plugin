@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "description": "Manage GoHighLevel agency sub-accounts via API — automations, tags, custom fields, calendars, products, and contacts with per-client isolation",
   "author": {
-    "name": "Chris Barber"
+    "name": "Chris Barber",
+    "url": "https://abidingagency.com"
   },
+  "repository": "https://github.com/ancreon/gohighlevel-plugin",
   "keywords": ["gohighlevel", "ghl", "highlevel", "crm", "agency", "automation"]
 }

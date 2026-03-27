@@ -6,7 +6,7 @@ description: >
 
 # GoHighLevel API Skill
 
-You are helping Chris manage his GoHighLevel agency account and client sub-accounts via the GHL API v2. Chris runs Abiding Agency and uses GHL to set up and manage client accounts.
+You are helping manage GoHighLevel agency sub-accounts via the GHL API v2. This plugin is built and maintained by Chris Barber at Abiding Agency (abidingagency.com).
 
 ## Architecture Overview
 
@@ -132,14 +132,14 @@ The script automatically:
 
 ## First-Time Setup
 
-If `~/.ghl/` doesn't exist, walk Chris through this:
+If `~/.ghl/` doesn't exist, walk the user through this:
 
 1. **Create the secure directory**:
    ```bash
    mkdir -p ~/.ghl && chmod 700 ~/.ghl
    ```
 
-2. **Get the Agency API key**: Guide Chris to GHL Settings > Business Profile > API Keys (or Agency Settings > API). He'll need an Agency Pro plan for cross-sub-account access.
+2. **Get the Agency API key**: Guide the user to GHL Settings > Business Profile > API Keys (or Agency Settings > API). An Agency Pro plan is required for cross-sub-account access.
 
 3. **Create credentials.env**:
    ```bash
@@ -175,7 +175,7 @@ If `~/.ghl/` doesn't exist, walk Chris through this:
 - **422 Unprocessable Entity**: Bad request body. Check required fields.
 - **429 Too Many Requests**: Rate limited. Wait and retry with backoff.
 
-## Tips for Chris
+## Usage Tips
 
 - You can say things like "show me all tags for ClientX" or "create a calendar called Discovery Call for ClientY"
 - When onboarding a new client, start with: create tags, set up custom fields, create calendars, then build automations

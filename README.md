@@ -1,5 +1,7 @@
 # GoHighLevel Plugin
 
+Built by [Chris Barber](https://github.com/ancreon) at [Abiding Agency](https://abidingagency.com)
+
 Manage your GoHighLevel agency sub-accounts via API from any Claude session. Supports automations, tags, custom fields/values, calendars, scheduling, products, and contacts — all with per-client isolation.
 
 ## Components
