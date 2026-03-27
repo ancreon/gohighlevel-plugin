@@ -1,7 +1,7 @@
 ---
 description: List, add, or remove GHL client configs
 allowed-tools: Bash, Read
-argument-hint: [list|add|remove] [client-name]
+argument-hint: "list | add <key> <name> <id> | remove <key>"
 ---
 
 Manage the GoHighLevel client configuration.
