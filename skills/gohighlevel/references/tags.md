@@ -1,21 +1,23 @@
 # Tags API Reference
 
+**Requires sub-account token** — use `--token` flag with the helper script.
+
 ## Endpoints
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/tags?locationId={id}` | List all tags |
-| POST | `/tags` | Create a tag |
-| GET | `/tags/{tagId}` | Get single tag |
-| PUT | `/tags/{tagId}` | Update a tag |
-| DELETE | `/tags/{tagId}` | Delete a tag |
+| GET | `/locations/{locationId}/tags` | List all tags |
+| POST | `/locations/{locationId}/tags` | Create a tag |
+| GET | `/locations/{locationId}/tags/{tagId}` | Get single tag |
+| PUT | `/locations/{locationId}/tags/{tagId}` | Update a tag |
+| DELETE | `/locations/{locationId}/tags/{tagId}` | Delete a tag |
 | POST | `/contacts/{contactId}/tags` | Add tags to contact |
 | DELETE | `/contacts/{contactId}/tags/{tagId}` | Remove tag from contact |
 
 ## List Tags
 
 ```
-GET /tags?locationId={locationId}
+GET /locations/{locationId}/tags
 ```
 
 **Response:**
@@ -31,10 +33,10 @@ GET /tags?locationId={locationId}
 ## Create Tag
 
 ```
-POST /tags
+POST /locations/{locationId}/tags
 ```
 ```json
-{ "locationId": "location-id", "name": "New Tag Name" }
+{ "name": "New Tag Name" }
 ```
 
 Tag names must be unique within a sub-account.

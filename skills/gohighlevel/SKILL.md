@@ -10,34 +10,42 @@ You are helping manage GoHighLevel agency sub-accounts via the GHL API v2. This 
 
 ## Architecture Overview
 
-This skill uses a **secure, client-scoped** approach:
+This skill uses a **two-tier token system** with per-client isolation:
 
-- **Agency API key** stored in a `.env` file (never hardcoded, never committed)
-- **Client config** maps friendly client names to their GHL sub-account (location) IDs
-- **All API calls are scoped** to a specific client's sub-account — you physically cannot accidentally touch the wrong client's data
+- **Agency API key** — used for agency-level operations (listing sub-accounts, managing locations)
+- **Sub-account tokens** — one per client, used for all client-scoped operations (contacts, tags, calendars, etc.)
+- **Client config** maps friendly client names to their location IDs and token variable names
+
+This separation exists because GHL scopes API permissions differently at the agency vs. sub-account level. Agency tokens can manage locations but cannot access contacts, tags, or calendars. Sub-account tokens have full access to that specific client's data.
 
 ## Before Making Any API Call
 
-1. **Load credentials**: Read the `.env` file at `~/.ghl/credentials.env` to get the agency API key
-2. **Load client config**: Read `~/.ghl/clients.json` to get the client's location ID
-3. **Confirm the client**: Always confirm which client you're working with before making API calls. If ambiguous, ask.
-4. **Use the helper script**: All API calls go through `scripts/ghl-api.sh` which handles auth headers, client scoping, and error handling
+1. **Load client config**: Read `~/.ghl/clients.json` to get the client's `locationId` and `tokenVar`
+2. **Confirm the client**: Always confirm which client you're working with before making API calls. If ambiguous, ask.
+3. **Choose the right token**:
+   - Agency-level calls (list locations, manage sub-accounts): use `GHL_AGENCY_API_KEY`
+   - Client-scoped calls (contacts, tags, calendars, etc.): use the client's `tokenVar`
+4. **Use the helper script** with the `--token` flag for client-scoped calls
 
 ## Credential Files
 
 ### ~/.ghl/credentials.env
 ```
-GHL_AGENCY_API_KEY=your-agency-api-key-here
+GHL_AGENCY_API_KEY=agency-key-here
+
+# Sub-account tokens (one per client)
+GHL_TOKEN_CLIENT_NAME=sub-account-token-here
 ```
 
 ### ~/.ghl/clients.json
 ```json
 {
   "clients": {
-    "client-name": {
+    "client-key": {
       "name": "Client Display Name",
       "locationId": "location-id-from-ghl",
-      "notes": "Optional notes about this client"
+      "tokenVar": "GHL_TOKEN_CLIENT_NAME",
+      "notes": "Optional notes"
     }
   }
 }
@@ -51,12 +59,15 @@ If these files don't exist, guide the user through first-time setup (see Setup s
 
 **Required headers on every request**:
 ```
-Authorization: Bearer {api_key}
+Authorization: Bearer {token}
 Version: 2021-04-15
 Content-Type: application/json
 ```
 
-**Client scoping**: Pass `locationId` as a query parameter or in the request body to scope requests to a specific sub-account.
+**Endpoint pattern for sub-account data**: Most client-scoped endpoints use `/locations/{locationId}/resource` format:
+- Tags: `GET /locations/{locationId}/tags`
+- Contacts: `GET /contacts/?locationId={locationId}`
+- Custom fields: `GET /locations/{locationId}/customFields`
 
 **Rate limits**: 100 requests per 10 seconds, 200,000 per day. Monitor `X-RateLimit-Remaining` header.
 
@@ -64,71 +75,71 @@ Content-Type: application/json
 
 ### Contacts
 Read `references/contacts.md` for full endpoint details.
-- Search/list contacts: `GET /contacts/search?locationId={id}`
+- List contacts: `GET /contacts/?locationId={id}&limit=20`
 - Create contact: `POST /contacts` with `locationId` in body
 - Update contact: `PUT /contacts/{contactId}`
 - Add tags to contact: `POST /contacts/{contactId}/tags`
 
 ### Tags
 Read `references/tags.md` for full endpoint details.
-- List tags: `GET /tags?locationId={id}`
-- Create tag: `POST /tags` with `name` and `locationId`
+- List tags: `GET /locations/{locationId}/tags`
+- Create tag: `POST /locations/{locationId}/tags` with `name` in body
 - Add tag to contact: `POST /contacts/{contactId}/tags`
 
 ### Custom Fields & Custom Values
 Read `references/custom-fields.md` for full endpoint details.
-- List custom fields: `GET /custom-fields?locationId={id}`
-- Create custom field: `POST /custom-fields`
-- Set custom value on contact: include in contact create/update via `customFields` object
+- List custom fields: `GET /locations/{locationId}/customFields`
+- Create custom field: `POST /locations/{locationId}/customFields`
 
 ### Automations / Workflows
 Read `references/workflows.md` for full endpoint details.
 - List workflows: `GET /workflows?locationId={id}`
 - Get workflow: `GET /workflows/{workflowId}`
-- Trigger workflow: `POST /workflows/{workflowId}/trigger`
 
 ### Calendars & Scheduling
 Read `references/calendars.md` for full endpoint details.
 - List calendars: `GET /calendars?locationId={id}`
 - Create calendar: `POST /calendars`
 - List appointments: `GET /calendars/{calendarId}/appointments`
-- Create appointment: `POST /calendars/{calendarId}/appointments`
 
 ### Products & Pricing
 Read `references/products.md` for full endpoint details.
 - List products: `GET /products?locationId={id}`
 - Create product: `POST /products`
-- Create price: `POST /products/{productId}/prices`
 
 ### Sub-Accounts (Locations)
 Read `references/locations.md` for full endpoint details.
-- List all sub-accounts: `GET /locations` (agency key required)
+- List all sub-accounts: `GET /locations/search` (agency key, no --token needed)
 - Get sub-account details: `GET /locations/{locationId}`
 
 ## Making API Calls
 
-Use the helper script for all API calls:
+Use the helper script for all API calls. For client-scoped calls, always pass `--token`:
 
 ```bash
-# GET request
-bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh GET "/contacts/search?locationId={locationId}&limit=20"
+# Agency-level call (uses GHL_AGENCY_API_KEY by default)
+bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh GET "/locations/search"
 
-# POST request
-bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh POST "/contacts" '{"firstName":"John","lastName":"Doe","email":"john@example.com","locationId":"abc123"}'
+# Client-scoped call (uses the client's sub-account token)
+bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh GET "/locations/{locationId}/tags" --token GHL_TOKEN_CLIENT_NAME
 
-# PUT request
-bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh PUT "/contacts/{contactId}" '{"firstName":"Updated"}'
+# POST with body and client token
+bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh POST "/contacts" '{"firstName":"John","locationId":"abc123"}' --token GHL_TOKEN_CLIENT_NAME
 
-# DELETE request
-bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh DELETE "/tags/{tagId}"
+# Dry run (preview without sending)
+bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh GET "/locations/{locationId}/tags" --token GHL_TOKEN_CLIENT_NAME --dry-run
 ```
 
-The script automatically:
-- Loads the API key from `~/.ghl/credentials.env`
-- Adds required auth and version headers
-- Handles JSON content type
-- Returns formatted JSON responses
-- Shows HTTP status codes for debugging
+### Typical call pattern for a client operation:
+
+```bash
+# 1. Look up client config
+LOCATION_ID=$(jq -r '.clients["client-key"].locationId' ~/.ghl/clients.json)
+TOKEN_VAR=$(jq -r '.clients["client-key"].tokenVar' ~/.ghl/clients.json)
+
+# 2. Make the scoped call
+bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh GET "/locations/${LOCATION_ID}/tags" --token "$TOKEN_VAR"
+```
 
 ## First-Time Setup
 
@@ -139,28 +150,22 @@ If `~/.ghl/` doesn't exist, walk the user through this:
    mkdir -p ~/.ghl && chmod 700 ~/.ghl
    ```
 
-2. **Get the Agency API key**: Guide the user to GHL Settings > Business Profile > API Keys (or Agency Settings > API). An Agency Pro plan is required for cross-sub-account access.
+2. **Get the Agency API key**: Guide the user to GHL Settings > Business Profile > API Keys. This key manages locations/sub-accounts.
 
-3. **Create credentials.env**:
-   ```bash
-   echo "GHL_AGENCY_API_KEY=paste-key-here" > ~/.ghl/credentials.env
-   chmod 600 ~/.ghl/credentials.env
-   ```
+3. **Discover sub-accounts**: Use the agency key to list all locations.
 
-4. **Discover sub-accounts**: Once the key is set, run:
-   ```bash
-   bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh GET "/locations"
-   ```
-   This returns all sub-accounts. Use the output to build `clients.json`.
+4. **Create sub-account tokens**: For each client, go into that sub-account in GHL > Settings > Integrations > Private Integrations > Create. Enable all scopes. Save the token.
 
-5. **Create clients.json** from the discovered sub-accounts.
+5. **Add tokens to credentials.env** — one `GHL_TOKEN_` variable per client.
 
-6. **Test**: Run a simple contacts search for one client to verify everything works.
+6. **Build clients.json** — map each client key to locationId and tokenVar.
+
+7. **Test**: Pull tags for a client to verify.
 
 ## Security Rules
 
-- NEVER echo, log, or display the API key in responses to the user
-- NEVER include API keys in code blocks shown to the user
+- NEVER echo, log, or display API tokens in responses to the user
+- NEVER include tokens in code blocks shown to the user
 - NEVER commit credentials files to any repository
 - Always confirm which client before making write operations (POST, PUT, DELETE)
 - The `~/.ghl/` directory uses 700 permissions (owner-only access)
@@ -169,15 +174,15 @@ If `~/.ghl/` doesn't exist, walk the user through this:
 
 ## Error Handling
 
-- **401 Unauthorized**: API key is invalid or expired. Guide user to regenerate.
-- **403 Forbidden**: The key doesn't have access to that sub-account. Check locationId.
-- **404 Not Found**: Resource doesn't exist. Double-check IDs.
+- **401 Unauthorized**: Token is invalid, expired, or missing required scopes. Check the sub-account's Private Integration.
+- **403 Forbidden**: The token doesn't have access to that resource.
+- **404 Not Found**: Resource or endpoint doesn't exist. Try the `/locations/{locationId}/resource` pattern.
 - **422 Unprocessable Entity**: Bad request body. Check required fields.
 - **429 Too Many Requests**: Rate limited. Wait and retry with backoff.
 
 ## Usage Tips
 
-- You can say things like "show me all tags for ClientX" or "create a calendar called Discovery Call for ClientY"
+- Say things like "show me all tags for hot-reels" or "create a calendar for wide-awakening"
 - When onboarding a new client, start with: create tags, set up custom fields, create calendars, then build automations
-- Use `--dry-run` flag with the helper script to preview requests without sending them
-- The skill loads reference docs on demand — ask about any specific API area and I'll pull up the details
+- Use `--dry-run` to preview any request before sending
+- If a client shows "Needs sub-account token" in notes, walk through creating a Private Integration in that sub-account first

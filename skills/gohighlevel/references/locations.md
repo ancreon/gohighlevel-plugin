@@ -6,7 +6,7 @@ In GHL, "Locations" are sub-accounts — each client gets their own location.
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/locations` | List all sub-accounts (agency key) |
+| GET | `/locations/search` | List all sub-accounts (agency key) |
 | GET | `/locations/{locationId}` | Get sub-account details |
 | POST | `/locations` | Create sub-account (Agency Pro) |
 | PUT | `/locations/{locationId}` | Update sub-account |
@@ -15,10 +15,10 @@ In GHL, "Locations" are sub-accounts — each client gets their own location.
 ## List All Sub-Accounts
 
 ```
-GET /locations
+GET /locations/search
 ```
 
-Requires agency-level API key. Returns all sub-accounts under the agency.
+Requires agency-level API key (no `--token` needed). Returns all sub-accounts under the agency.
 
 **Response:**
 ```json
