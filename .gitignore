@@ -3,9 +3,8 @@
 credentials.env
 *.env
 
-# Client config may contain location IDs
-# Uncomment if you want to keep it private:
-# clients.json
+# Client config contains location IDs and token references
+clients.json
 
 # OS files
 .DS_Store
