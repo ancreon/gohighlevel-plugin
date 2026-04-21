@@ -20,7 +20,7 @@ set -euo pipefail
 
 BASE_URL="https://services.leadconnectorhq.com"
 CREDS_FILE="$HOME/.ghl/credentials.env"
-API_VERSION="2021-04-15"
+API_VERSION="2021-07-28"
 
 # --- Argument parsing ---
 METHOD="${1:-}"

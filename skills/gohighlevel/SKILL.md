@@ -1,7 +1,7 @@
 ---
 name: gohighlevel
 description: >
-  This skill manages GoHighLevel (GHL) agency sub-accounts via the API v2 — automations, tags, custom fields/values, calendars, scheduling, products, and contacts with per-client isolation. Use this skill whenever the user mentions "GoHighLevel", "GHL", "HighLevel", "sub-accounts", "client setup in GHL", "set up automations", "create tags for client", "manage calendars in HighLevel", "add products to GHL", "custom fields", "custom values", "GHL API", "client onboarding", or any request to read or write data in a GoHighLevel sub-account. Always use this skill for any GHL-related work — do not try to call the GHL API from memory.
+  This skill manages GoHighLevel (GHL) agency sub-accounts via the API v2 — tags, custom fields/values, calendars, scheduling, products, contacts, and workflows (read/trigger only) with per-client isolation. Use this skill whenever the user mentions "GoHighLevel", "GHL", "HighLevel", "sub-accounts", "client setup in GHL", "create tags for client", "manage calendars in HighLevel", "add products to GHL", "custom fields", "custom values", "GHL API", "client onboarding", "list workflows", "trigger workflow", or any request to read or write data in a GoHighLevel sub-account. Always use this skill for any GHL-related work — do not try to call the GHL API from memory.
 ---
 
 # GoHighLevel API Skill
@@ -17,6 +17,8 @@ This skill uses a **two-tier token system** with per-client isolation:
 - **Client config** maps friendly client names to their location IDs and token variable names
 
 This separation exists because GHL scopes API permissions differently at the agency vs. sub-account level. Agency tokens can manage locations but cannot access contacts, tags, or calendars. Sub-account tokens have full access to that specific client's data.
+
+**Sub-account-only users**: If the user does not have agency access (e.g., they only manage a single GHL sub-account), the plugin still works. They skip the agency key, generate a Location-level PIT from their sub-account settings, and configure a single client entry. The only features they lose are agency-level endpoints like `/locations/search`.
 
 ## Before Making Any API Call
 
@@ -60,14 +62,15 @@ If these files don't exist, guide the user through first-time setup (see Setup s
 **Required headers on every request**:
 ```
 Authorization: Bearer {token}
-Version: 2021-04-15
+Version: 2021-07-28
 Content-Type: application/json
 ```
 
-**Endpoint pattern for sub-account data**: Most client-scoped endpoints use `/locations/{locationId}/resource` format:
-- Tags: `GET /locations/{locationId}/tags`
-- Contacts: `GET /contacts/?locationId={locationId}`
-- Custom fields: `GET /locations/{locationId}/customFields`
+**Endpoint pattern for sub-account data**: GHL's API uses **mixed patterns** depending on the resource — some use path params, some use query params. This is GHL's design, not a bug:
+- Path param style: `GET /locations/{locationId}/tags`, `GET /locations/{locationId}/customFields`
+- Query param style: `GET /contacts/?locationId={locationId}`, `GET /workflows?locationId={id}`
+
+Always check the reference doc for the specific resource to get the correct URL pattern.
 
 **Rate limits**: 100 requests per 10 seconds, 200,000 per day. Monitor `X-RateLimit-Remaining` header.
 
@@ -91,10 +94,12 @@ Read `references/custom-fields.md` for full endpoint details.
 - List custom fields: `GET /locations/{locationId}/customFields`
 - Create custom field: `POST /locations/{locationId}/customFields`
 
-### Automations / Workflows
+### Workflows (Read & Trigger Only)
 Read `references/workflows.md` for full endpoint details.
 - List workflows: `GET /workflows?locationId={id}`
 - Get workflow: `GET /workflows/{workflowId}`
+
+**Important**: The GHL Workflows API is read and trigger only — you can list workflows and add a contact to a workflow, but you **cannot** create, edit, or build workflow steps via API. If the user asks to "build an automation" or "create a workflow," direct them to do that in the GHL UI, then you can trigger it or list it here.
 
 ### Calendars & Scheduling
 Read `references/calendars.md` for full endpoint details.
@@ -150,7 +155,7 @@ If `~/.ghl/` doesn't exist, walk the user through this:
    mkdir -p ~/.ghl && chmod 700 ~/.ghl
    ```
 
-2. **Get the Agency API key**: Guide the user to GHL Settings > Business Profile > API Keys. This key manages locations/sub-accounts.
+2. **Get the Agency API key** (agency users): Guide the user to GHL Settings > Business Profile > API Keys. This key manages locations/sub-accounts. **Sub-account-only users** can skip this step — they won't have agency access and don't need `GHL_AGENCY_API_KEY`.
 
 3. **Discover sub-accounts**: Use the agency key to list all locations.
 
@@ -174,7 +179,7 @@ If `~/.ghl/` doesn't exist, walk the user through this:
 
 ## Error Handling
 
-- **401 Unauthorized**: Token is invalid, expired, or missing required scopes. Check the sub-account's Private Integration.
+- **401 Unauthorized**: Token is invalid, expired, or missing required scopes. Most common cause: reusing a PIT from one sub-account to call a different sub-account — PITs are single-sub-account-scoped. Fix: generate a dedicated Location PIT inside the target sub-account's Settings > Integrations > Private Integrations.
 - **403 Forbidden**: The token doesn't have access to that resource.
 - **404 Not Found**: Resource or endpoint doesn't exist. Try the `/locations/{locationId}/resource` pattern.
 - **422 Unprocessable Entity**: Bad request body. Check required fields.

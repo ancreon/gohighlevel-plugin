@@ -1,0 +1,21 @@
+{
+  "name": "gohighlevel-plugin",
+  "description": "GoHighLevel plugins for Claude Code — manage GHL sub-accounts via API",
+  "owner": {
+    "name": "Chris Barber",
+    "email": "chris@abidingagency.com",
+    "url": "https://abidingagency.com"
+  },
+  "plugins": [
+    {
+      "name": "gohighlevel",
+      "version": "0.1.0",
+      "description": "Manage GoHighLevel agency sub-accounts via API — tags, custom fields, calendars, products, contacts, and workflows with per-client isolation",
+      "author": {
+        "name": "Chris Barber",
+        "url": "https://abidingagency.com"
+      },
+      "keywords": ["gohighlevel", "ghl", "highlevel", "crm", "agency", "automation"]
+    }
+  ]
+}
