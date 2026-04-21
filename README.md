@@ -1,4 +1,4 @@
-# GoHighLevel Plugin for Claude Code
+# GoHighLevel Plugin for Claude Cowork & Claude Code
 
 Built by [Chris Barber](https://github.com/ancreon) at [Abiding Agency](https://abidingagency.com)
 
