@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # GoHighLevel Client Manager
-# Lookup client locationId from ~/.ghl/clients.json
+# Lookup client locationId from clients.json (location resolved by lib-ghl-config.sh)
 #
 # Usage:
 #   bash ghl-client.sh list                    # List all configured clients
@@ -11,8 +11,12 @@
 
 set -euo pipefail
 
-CLIENTS_FILE="$HOME/.ghl/clients.json"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve config location via the shared lib ($GHL_CONFIG_DIR -> ~/.ghl -> mounted */ghl-config)
+source "$SCRIPT_DIR/lib-ghl-config.sh"
+GHL_DIR="$(ghl_config_dir clients.json || true)"
+[[ -z "$GHL_DIR" ]] && GHL_DIR="$(ghl_target_dir)"  # where config would be created
+CLIENTS_FILE="$GHL_DIR/clients.json"
 
 # --- Ensure jq is available ---
 if ! command -v jq &>/dev/null; then
@@ -65,6 +69,7 @@ case "$ACTION" in
       exit 1
     fi
     if [[ ! -f "$CLIENTS_FILE" ]]; then
+      mkdir -p "$GHL_DIR" && chmod 700 "$GHL_DIR"
       echo '{"clients":{}}' > "$CLIENTS_FILE"
       chmod 600 "$CLIENTS_FILE"
     fi

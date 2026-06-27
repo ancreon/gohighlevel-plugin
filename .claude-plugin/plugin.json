@@ -1,6 +1,6 @@
 {
   "name": "gohighlevel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Manage GoHighLevel agency sub-accounts via API — automations, tags, custom fields, calendars, products, and contacts with per-client isolation",
   "author": {
     "name": "Chris Barber",

@@ -31,11 +31,11 @@ Then run `/ghl-setup` to configure your credentials.
 3. A Location-level PIT for each sub-account you want to manage
 
 **First-time setup:** Run `/ghl-setup` in any Claude session to walk through:
-1. Creating the secure `~/.ghl/` directory
-2. Storing your Agency API key in `~/.ghl/credentials.env`
+1. Creating the secure config directory (see [Config Location](#config-location))
+2. Storing your Agency API key in `credentials.env`
 3. Discovering your sub-accounts via the API
 4. Generating a Location PIT for each sub-account
-5. Configuring your client list in `~/.ghl/clients.json`
+5. Configuring your client list in `clients.json`
 
 ### For Sub-Account Users (single account, no agency access)
 
@@ -58,16 +58,22 @@ Once set up, just mention GHL in conversation:
 - "Create a Discovery Call calendar for client-x"
 - "List custom fields for client-y"
 - "Add a new product for client-z"
-- "List workflows for hot-reels"
+- "List workflows for client-z"
 
 The skill automatically loads reference docs for the relevant API domain and scopes all calls to the specified client's sub-account.
 
-## Environment
+## Config Location
 
-Credentials are stored at:
-- `~/.ghl/credentials.env` — API keys (permissions: 600)
-- `~/.ghl/clients.json` — Client name-to-locationId mapping (permissions: 600)
-- `~/.ghl/` directory permissions: 700 (owner-only)
+The helper scripts resolve where your credentials live, in this order:
+
+1. **`$GHL_CONFIG_DIR`** — explicit override; works anywhere
+2. **`~/.ghl/`** — default for Claude Code / desktop (persistent home)
+3. **a mounted `*/ghl-config` folder** — for Cowork, where the sandbox home is wiped between sessions, so config must live in a folder mounted from your computer
+
+Inside that directory:
+- `credentials.env` — API keys (permissions: 600)
+- `clients.json` — client name-to-locationId mapping (permissions: 600)
+- directory permissions: 700 (owner-only)
 
 ## Security
 

@@ -4,8 +4,8 @@
 #
 # Examples:
 #   bash ghl-api.sh GET "/locations/search"
-#   bash ghl-api.sh GET "/locations/abc123/tags" --token GHL_TOKEN_ABIDING_AGENCY
-#   bash ghl-api.sh POST "/contacts" '{"firstName":"John","locationId":"abc123"}' --token GHL_TOKEN_HOT_REELS
+#   bash ghl-api.sh GET "/locations/abc123/tags" --token GHL_TOKEN_ACME
+#   bash ghl-api.sh POST "/contacts" '{"firstName":"John","locationId":"abc123"}' --token GHL_TOKEN_ACME
 #   bash ghl-api.sh GET "/locations" --dry-run
 #
 # Token selection:
@@ -13,14 +13,21 @@
 #                      If not specified, falls back to GHL_AGENCY_API_KEY
 #
 # Environment:
-#   Reads credentials from ~/.ghl/credentials.env
+#   Reads credentials from the config dir resolved by lib-ghl-config.sh:
+#   $GHL_CONFIG_DIR, else ~/.ghl, else a mounted */ghl-config folder.
 #   Requires: curl, jq (optional, for pretty output)
 
 set -euo pipefail
 
 BASE_URL="https://services.leadconnectorhq.com"
-CREDS_FILE="$HOME/.ghl/credentials.env"
 API_VERSION="2021-07-28"
+
+# Resolve config location via the shared lib ($GHL_CONFIG_DIR -> ~/.ghl -> mounted */ghl-config)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib-ghl-config.sh"
+GHL_DIR="$(ghl_config_dir credentials.env || true)"
+[[ -z "$GHL_DIR" ]] && GHL_DIR="$(ghl_target_dir)"  # for the not-found message below
+CREDS_FILE="$GHL_DIR/credentials.env"
 
 # --- Argument parsing ---
 METHOD="${1:-}"
@@ -60,13 +67,12 @@ if [[ -z "$METHOD" || -z "$ENDPOINT" ]]; then
   echo ""
   echo "Examples:"
   echo "  bash ghl-api.sh GET \"/locations/search\""
-  echo "  bash ghl-api.sh GET \"/locations/abc123/tags\" --token GHL_TOKEN_ABIDING_AGENCY"
-  echo "  bash ghl-api.sh POST \"/contacts\" '{\"firstName\":\"John\"}' --token GHL_TOKEN_HOT_REELS"
+  echo "  bash ghl-api.sh GET \"/locations/abc123/tags\" --token GHL_TOKEN_ACME"
+  echo "  bash ghl-api.sh POST \"/contacts\" '{\"firstName\":\"John\"}' --token GHL_TOKEN_ACME"
   echo "  bash ghl-api.sh GET \"/locations\" --dry-run"
   echo ""
-  echo "Config:"
-  echo "  Credentials:  ~/.ghl/credentials.env"
-  echo "  Clients:      ~/.ghl/clients.json"
+  echo "Config dir (resolved): $GHL_DIR"
+  echo "  Order: \$GHL_CONFIG_DIR -> ~/.ghl -> mounted */ghl-config"
   exit 1
 fi
 
@@ -76,10 +82,13 @@ METHOD=$(echo "$METHOD" | tr '[:lower:]' '[:upper:]')
 if [[ ! -f "$CREDS_FILE" ]]; then
   echo "ERROR: Credentials file not found at $CREDS_FILE"
   echo ""
-  echo "First-time setup:"
-  echo "  mkdir -p ~/.ghl && chmod 700 ~/.ghl"
-  echo "  echo \"GHL_AGENCY_API_KEY=your-key-here\" > ~/.ghl/credentials.env"
-  echo "  chmod 600 ~/.ghl/credentials.env"
+  echo "Config is resolved in this order:"
+  echo "  1. \$GHL_CONFIG_DIR (if set)   2. ~/.ghl   3. a mounted */ghl-config folder"
+  echo ""
+  echo "First-time setup (run /ghl-setup, or manually):"
+  echo "  mkdir -p \"$GHL_DIR\" && chmod 700 \"$GHL_DIR\""
+  echo "  echo \"GHL_AGENCY_API_KEY=your-key-here\" > \"$GHL_DIR/credentials.env\""
+  echo "  chmod 600 \"$GHL_DIR/credentials.env\""
   exit 1
 fi
 

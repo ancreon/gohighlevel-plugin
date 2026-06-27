@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "gohighlevel",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Manage GoHighLevel agency sub-accounts via API — tags, custom fields, calendars, products, contacts, and workflows with per-client isolation",
       "source": {
         "source": "url",

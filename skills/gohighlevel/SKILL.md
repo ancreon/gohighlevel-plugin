@@ -20,9 +20,19 @@ This separation exists because GHL scopes API permissions differently at the age
 
 **Sub-account-only users**: If the user does not have agency access (e.g., they only manage a single GHL sub-account), the plugin still works. They skip the agency key, generate a Location-level PIT from their sub-account settings, and configure a single client entry. The only features they lose are agency-level endpoints like `/locations/search`.
 
+## Config Location
+
+The helper scripts resolve where `credentials.env` and `clients.json` live, in this order:
+
+1. **`$GHL_CONFIG_DIR`** — explicit override; works in any environment
+2. **`~/.ghl/`** — default for Claude Code / desktop (persistent home directory)
+3. **a mounted `*/ghl-config` folder** — used in Cowork, where the sandbox home is wiped between sessions, so config must live in a folder mounted from the user's real computer
+
+Never hardcode the path — always go through the helper scripts (or read the dir they report). To find the resolved dir, run `ghl-api.sh` with no arguments; it prints "Config dir (resolved): …".
+
 ## Before Making Any API Call
 
-1. **Load client config**: Read `~/.ghl/clients.json` to get the client's `locationId` and `tokenVar`
+1. **Load client config**: Read `clients.json` from the resolved config dir to get the client's `locationId` and `tokenVar`
 2. **Confirm the client**: Always confirm which client you're working with before making API calls. If ambiguous, ask.
 3. **Choose the right token**:
    - Agency-level calls (list locations, manage sub-accounts): use `GHL_AGENCY_API_KEY`
@@ -31,22 +41,22 @@ This separation exists because GHL scopes API permissions differently at the age
 
 ## Credential Files
 
-### ~/.ghl/credentials.env
+### credentials.env
 ```
 GHL_AGENCY_API_KEY=agency-key-here
 
 # Sub-account tokens (one per client)
-GHL_TOKEN_CLIENT_NAME=sub-account-token-here
+GHL_TOKEN_ACME=sub-account-token-here
 ```
 
-### ~/.ghl/clients.json
+### clients.json
 ```json
 {
   "clients": {
-    "client-key": {
-      "name": "Client Display Name",
+    "acme": {
+      "name": "Acme Corp",
       "locationId": "location-id-from-ghl",
-      "tokenVar": "GHL_TOKEN_CLIENT_NAME",
+      "tokenVar": "GHL_TOKEN_ACME",
       "notes": "Optional notes"
     }
   }
@@ -138,21 +148,25 @@ bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh GET "/locations
 ### Typical call pattern for a client operation:
 
 ```bash
-# 1. Look up client config
-LOCATION_ID=$(jq -r '.clients["client-key"].locationId' ~/.ghl/clients.json)
-TOKEN_VAR=$(jq -r '.clients["client-key"].tokenVar' ~/.ghl/clients.json)
+# 1. Look up the client's locationId (ghl-client.sh resolves the config dir for you)
+LOCATION_ID=$(bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-client.sh get acme)
 
-# 2. Make the scoped call
-bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh GET "/locations/${LOCATION_ID}/tags" --token "$TOKEN_VAR"
+# 2. Make the scoped call (tokenVar follows the GHL_TOKEN_<KEY> convention)
+bash ${CLAUDE_PLUGIN_ROOT}/skills/gohighlevel/scripts/ghl-api.sh GET "/locations/${LOCATION_ID}/tags" --token GHL_TOKEN_ACME
 ```
 
 ## First-Time Setup
 
-If `~/.ghl/` doesn't exist, walk the user through this:
+If no config exists yet, run `/ghl-setup`, or walk the user through this. First decide where config should live (see Config Location above):
+- **Claude Code / desktop**: `~/.ghl`
+- **Cowork**: a folder mounted from the user's computer, e.g. `<their-mounted-folder>/ghl-config`, so it survives between sessions
+- Or set `GHL_CONFIG_DIR` to any path you prefer
+
+In the steps below, `$GHL_DIR` means that chosen directory.
 
 1. **Create the secure directory**:
    ```bash
-   mkdir -p ~/.ghl && chmod 700 ~/.ghl
+   mkdir -p "$GHL_DIR" && chmod 700 "$GHL_DIR"
    ```
 
 2. **Get the Agency API key** (agency users): Guide the user to GHL Settings > Business Profile > API Keys. This key manages locations/sub-accounts. **Sub-account-only users** can skip this step — they won't have agency access and don't need `GHL_AGENCY_API_KEY`.
@@ -173,7 +187,7 @@ If `~/.ghl/` doesn't exist, walk the user through this:
 - NEVER include tokens in code blocks shown to the user
 - NEVER commit credentials files to any repository
 - Always confirm which client before making write operations (POST, PUT, DELETE)
-- The `~/.ghl/` directory uses 700 permissions (owner-only access)
+- The config directory uses 700 permissions (owner-only access)
 - The `credentials.env` file uses 600 permissions (owner read/write only)
 - If the user asks to see their config, show `clients.json` (safe) but NEVER show `credentials.env` contents
 
@@ -187,7 +201,7 @@ If `~/.ghl/` doesn't exist, walk the user through this:
 
 ## Usage Tips
 
-- Say things like "show me all tags for hot-reels" or "create a calendar for wide-awakening"
+- Say things like "show me all tags for acme" or "create a calendar for acme"
 - When onboarding a new client, start with: create tags, set up custom fields, create calendars, then build automations
 - Use `--dry-run` to preview any request before sending
 - If a client shows "Needs sub-account token" in notes, walk through creating a Private Integration in that sub-account first
