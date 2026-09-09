@@ -122,6 +122,7 @@ CURL_ARGS=(
   -H "Version: ${API_VERSION}"
   -H "Content-Type: application/json"
   -H "Accept: application/json"
+  -H "User-Agent: ${GHL_USER_AGENT:-gohighlevel-plugin/0.3.0}"
 )
 
 if [[ -n "$BODY" ]]; then

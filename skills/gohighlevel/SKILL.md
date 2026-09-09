@@ -97,7 +97,13 @@ Read `references/contacts.md` for full endpoint details.
 Read `references/tags.md` for full endpoint details.
 - List tags: `GET /locations/{locationId}/tags`
 - Create tag: `POST /locations/{locationId}/tags` with `name` in body
+- Update tag: `PUT /locations/{locationId}/tags/{tagId}` — `name` is required
 - Add tag to contact: `POST /contacts/{contactId}/tags`
+
+Tags carry `description`, `color` and `categoryId` alongside `name`. Description
+and color are writable; **`color` is not validated by the API**, so set it by
+script and verify with a re-read. Tag *categories* cannot be managed via API at
+all — see the reference doc.
 
 ### Custom Fields & Custom Values
 Read `references/custom-fields.md` for full endpoint details.
@@ -126,6 +132,38 @@ Read `references/products.md` for full endpoint details.
 Read `references/locations.md` for full endpoint details.
 - List all sub-accounts: `GET /locations/search` (agency key, no --token needed)
 - Get sub-account details: `GET /locations/{locationId}`
+
+## When to use this plugin vs. the HighLevel MCP server
+
+An official HighLevel MCP server may also be connected (`mcp__HighLevel_MCP__*`).
+The two do **not** overlap much — check which surface owns the resource before
+reaching for either.
+
+| Need | Use |
+|---|---|
+| Location tags: list, create, update, delete, describe, color | **This plugin** — MCP has no location tag tools |
+| Custom fields: create / update | **This plugin** — MCP is read-only (`locations_get-custom-fields`) |
+| Calendars: create / configure | **This plugin** |
+| Products & pricing | **This plugin** |
+| Workflows: list / trigger | **This plugin** |
+| Sub-account discovery (`/locations/search`) | **This plugin** (agency key) |
+| Contacts: read, create, update, upsert, tag/untag | Either — MCP is quicker for one-offs |
+| Conversations & sending messages | **MCP** (`conversations_*`) |
+| Opportunities & pipelines | **MCP** (`opportunities_*`) |
+| Payments, orders, transactions | **MCP** (`payments_*`) |
+| Blogs, social posts, email templates | **MCP** |
+| Appointments / calendar events (read) | **MCP** (`calendars_get-calendar-events`) |
+
+Rule of thumb: **this plugin is the admin and configuration surface; the MCP is
+the day-to-day data and messaging surface.** Bulk config work belongs here,
+because the plugin gives you scripted writes, a saved rollback snapshot, and a
+verify pass — none of which the MCP tools provide.
+
+One caution: the MCP acts on whichever location its connection is bound to,
+while this plugin routes by explicit `--token` + `locationId` from
+`clients.json`. **For multi-client work, prefer the plugin** — the per-client
+isolation is the whole point, and a mis-scoped MCP call can write to the wrong
+sub-account with no obvious signal.
 
 ## Making API Calls
 
@@ -193,6 +231,16 @@ In the steps below, `$GHL_DIR` means that chosen directory.
 
 ## Error Handling
 
+- **403 Forbidden on a request that works in curl**: Not a permissions problem.
+  GHL's WAF rejects requests by User-Agent — a bare `Python-urllib/3.x` UA gets a
+  blanket `403` on every endpoint while the identical curl request returns `200`.
+  **Any non-curl client must send a real `User-Agent` header.** `ghl-api.sh` sets
+  one automatically; override with `$GHL_USER_AGENT`. This misreads as a token
+  scope error and will send you chasing the wrong thing — check the UA first.
+- **401 "This route is not yet supported by the IAM Service"**: The endpoint
+  exists but is not wired into Private Integration Token auth. No token — agency
+  or sub-account — will open it. Known case: `/locations/{id}/tags/categories`.
+  Treat as UI-only and move on; do not regenerate tokens chasing it.
 - **401 Unauthorized**: Token is invalid, expired, or missing required scopes. Most common cause: reusing a PIT from one sub-account to call a different sub-account — PITs are single-sub-account-scoped. Fix: generate a dedicated Location PIT inside the target sub-account's Settings > Integrations > Private Integrations.
 - **403 Forbidden**: The token doesn't have access to that resource.
 - **404 Not Found**: Resource or endpoint doesn't exist. Try the `/locations/{locationId}/resource` pattern.

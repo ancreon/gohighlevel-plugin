@@ -4,6 +4,41 @@ All notable changes to the GoHighLevel plugin are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-09-09
+
+Field-tested against a live 77-tag sub-account. Documents three GHL behaviours
+that each cost real debugging time, and clarifies the boundary with the official
+HighLevel MCP server.
+
+### Added
+- `User-Agent` header on every request in `ghl-api.sh`, overridable via
+  `$GHL_USER_AGENT`. GHL's WAF returns a blanket `403` to clients sending a
+  bare `Python-urllib/3.x` UA while accepting the identical curl request — a
+  failure that reads as a token scope error and misdirects debugging entirely.
+- SKILL.md section: **when to use this plugin vs. the HighLevel MCP server**,
+  with a resource-by-resource table. Short version: the plugin is the admin and
+  configuration surface, the MCP is the data and messaging surface. Location tag
+  management, custom field creation, calendars, products and workflows exist
+  only here.
+- Bulk-edit procedure in `references/tags.md`: snapshot first, abort on
+  map/live mismatch, throttle, then re-read and diff for `name` and
+  `categoryId` drift.
+
+### Changed
+- `references/tags.md` rewritten. The documented tag object was wrong — tags
+  carry `description`, `color` and `categoryId` alongside `name`, and
+  `description`/`color` are writable via `PUT`. Adds the `PUT` contract
+  (`name` is required on every call; omitting `categoryId` preserves it).
+
+### Fixed
+- Documented that `color` accepts **any string** and returns `200` — the literal
+  `"red"` stores and renders as nothing, with no error. Colors must be set by
+  script and verified by re-read.
+- Documented that `/locations/{id}/tags/categories` returns
+  `401 "not yet supported by the IAM Service"` for both agency and sub-account
+  tokens, on GET and POST. Tag categories are UI-only; category membership is
+  still readable from each tag's `categoryId`.
+
 ## [0.2.0] - 2026-06-27
 
 Portable config resolution and export hardening. The plugin now works across
